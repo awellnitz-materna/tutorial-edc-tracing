@@ -1,0 +1,87 @@
+---
+
+################################
+# EDC ControlPlane + DataPlane #
+################################
+participant:
+  id: "test-participant"
+controlplane:
+  debug:
+    enabled: true
+    port: 1044
+  service:
+    type: NodePort
+  endpoints:
+    management:
+      authKey: password
+  image:
+    pullPolicy: Never
+    tag: "latest"
+#    repository: "edc-controlplane-postgresql-hashicorp-vault"
+  securityContext:
+    # avoids some errors in the log: cannot write temp files of large multipart requests when R/O
+    readOnlyRootFilesystem: false
+  ssi:
+    miw:
+      url: "http://localhost:8080"
+      authorityId: "authorityId"
+    oauth:
+      client:
+        secretAlias: "client-secret"
+  opentelemetry: |-
+    otel.javaagent.enabled=true
+    otel.javaagent.debug=true
+  logging: |-
+    .level=DEBUG
+    org.eclipse.edc.level=ALL
+    handlers=java.util.logging.ConsoleHandler
+    java.util.logging.ConsoleHandler.formatter=java.util.logging.SimpleFormatter
+    java.util.logging.ConsoleHandler.level=ALL
+    java.util.logging.SimpleFormatter.format=[%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS] [%4$-7s] %5$s%6$s%n
+
+dataplane:
+  debug:
+    enabled: true
+    port: 1044
+  image:
+    pullPolicy: Never
+    tag: "latest"
+#    repository: "edc-dataplane-hashicorp-vault"
+  securityContext:
+    # avoids some errors in the log: cannot write temp files of large multipart requests when R/O
+    readOnlyRootFilesystem: false
+  aws:
+    endpointOverride: http://minio:9000
+    secretAccessKey: qwerty123
+    accessKeyId: qwerty123
+  opentelemetry: |-
+    otel.javaagent.enabled=true
+    otel.javaagent.debug=true
+  logging: |-
+    .level=DEBUG
+    org.eclipse.edc.level=ALL
+    handlers=java.util.logging.ConsoleHandler
+    java.util.logging.ConsoleHandler.formatter=java.util.logging.SimpleFormatter
+    java.util.logging.ConsoleHandler.level=ALL
+    java.util.logging.SimpleFormatter.format=[%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS] [%4$-7s] %5$s%6$s%n
+
+postgresql:
+   # JDBC URL should be set from `main.tf`
+   jdbcUrl:
+#  jdbcUrl: jdbc:postgresql://{{ .Release.Name }}-postgresql:5432/edc
+   auth:
+     username:
+     password:
+vault:
+  hashicorp:
+    url: http://{{ .Release.Name }}-vault:8200
+    token: root
+  secretNames:
+    transferProxyTokenEncryptionAesKey: aes-keys
+    # this must be set through CLI args: --set vault.secrets=$YOUR_VAULT_SECRETS where YOUR_VAULT_SECRETS should
+    #    # be a string in the format "key1:secret1;key2:secret2;..."
+    secrets:
+backendService:
+  httpProxyTokenReceiverUrl: "http://backend:8080"
+tests:
+  hookDeletePolicy: before-hook-creation
